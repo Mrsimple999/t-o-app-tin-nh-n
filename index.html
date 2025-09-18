@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tin nhắn cố định (Firebase realtime)</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:24px;background:#f7fafc}
+    .card{max-width:720px;margin:12px auto;padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06);background:#fff}
+    label{font-weight:600}
+    textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6edf3;margin-top:8px}
+    button{padding:10px 14px;border-radius:8px;border:none;background:#2563eb;color:#fff;margin-top:10px;cursor:pointer}
+    .muted{color:#6b7280;font-size:13px}
+    .result{margin-top:12px;padding:12px;border-radius:8px;background:#f1f5f9;border:1px solid #e2e8f0;word-break:break-all}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Gửi tin nhắn cố định</h2>
+    <p class="muted">Tin nhắn được lưu tại document cố định <code>messages/latest</code>. Người nhận chỉ cần mở link này để xem realtime và copy tự động.</p>
+
+    <label for="message">Tin nhắn</label>
+    <textarea id="message" rows="5" placeholder="Nhập tin nhắn... (bắt buộc)"></textarea>
+    <button id="sendBtn">Gửi &amp; Cập nhật</button>
+
+    <div class="result" id="sendResult" style="display:none">✔ Tin nhắn đã được lưu. Người khác chỉ cần mở trang này.</div>
+
+    <hr style="margin-top:20px" />
+    <h3>Tin nhắn mới nhất (Realtime)</h3>
+    <div id="savedMessage" style="white-space:pre-wrap;margin-top:8px;padding:10px;border-radius:8px;background:#fff;border:1px solid #eef2f7">Chưa có tin nhắn</div>
+    <div class="muted" style="margin-top:8px">Đã tạo: <span id="createdAt">—</span></div>
+    <div id="autoCopyMsg" class="muted" style="margin-top:8px;color:green;display:none">✔ Nội dung đã được sao chép vào bộ nhớ tạm</div>
+  </div>
+
+  <script type="module">
+    const firebaseConfig = {
+  apiKey: "AIzaSyBr3rKT-fDNQc-rz84k6haRMs_WfXoU6kI",
+  authDomain: "mail-9c51f.firebaseapp.com",
+  databaseURL: "https://mail-9c51f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mail-9c51f",
+  storageBucket: "mail-9c51f.firebasestorage.app",
+  messagingSenderId: "240185286356",
+  appId: "1:240185286356:web:a9273c909ae18e36b86541",
+  measurementId: "G-0XHQ657PH8"
+};
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
+    import { getFirestore, doc, setDoc, serverTimestamp, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const messageEl = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+    const sendResult = document.getElementById('sendResult');
+    const savedMessage = document.getElementById('savedMessage');
+    const createdAtEl = document.getElementById('createdAt');
+    const autoCopyMsg = document.getElementById('autoCopyMsg');
+
+    // Gửi tin nhắn (ghi đè document "latest")
+    sendBtn.addEventListener('click', async ()=>{
+      const text = messageEl.value.trim();
+      if(!text){ alert('Vui lòng nhập tin nhắn.'); return; }
+
+      sendBtn.disabled = true; sendBtn.textContent = 'Đang gửi...';
+      try{
+        await setDoc(doc(db, 'messages', 'latest'), {
+          message: text,
+          createdAt: serverTimestamp()
+        });
+        sendResult.style.display = 'block';
+      }catch(err){
+        console.error(err);
+        alert('Lỗi khi gửi: ' + (err.message || err));
+      }finally{
+        sendBtn.disabled = false; sendBtn.textContent = 'Gửi & Cập nhật';
+      }
+    });
+
+    // Realtime listener cho tin nhắn "latest"
+    const latestDoc = doc(db, 'messages', 'latest');
+    onSnapshot(latestDoc, async (snap)=>{
+      if(snap.exists()){
+        const data = snap.data();
+        savedMessage.textContent = data.message || '';
+        if(data.createdAt && data.createdAt.toDate){
+          createdAtEl.textContent = data.createdAt.toDate().toLocaleString();
+        }
+        // Auto copy
+        try{
+          await navigator.clipboard.writeText(data.message || '');
+          autoCopyMsg.style.display = 'block';
+        }catch(e){ console.warn('Không thể auto copy:', e); }
+      } else {
+        savedMessage.textContent = 'Chưa có tin nhắn';
+        createdAtEl.textContent = '—';
+      }
+    });
+  </script>
+</body>
+</html>
