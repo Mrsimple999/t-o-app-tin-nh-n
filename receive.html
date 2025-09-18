@@ -1,0 +1,97 @@
+
+
+<!-- receive.html -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nhận tin nhắn - Web cố định</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:24px;background:#f7fafc}
+  .card{max-width:720px;margin:12px auto;padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06);background:#fff}
+  .muted{color:#6b7280;font-size:13px}
+  #savedMessage{white-space:pre-wrap;margin-top:8px;padding:10px;border-radius:8px;background:#fff;border:1px solid #eef2f7;min-height:44px}
+  #autoCopyMsg{margin-top:8px;color:green;display:none}
+  #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;z-index:9999;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Tin nhắn mới nhất</h2>
+  <div id="savedMessage">Đang tải...</div>
+  <div class="muted">Đã tạo: <span id="createdAt">—</span></div>
+  <div id="autoCopyMsg">✔ Nội dung đã được sao chép vào bộ nhớ tạm</div>
+</div>
+<div id="toast"></div>
+<script type="module">
+ const firebaseConfig = {
+  apiKey: "AIzaSyBr3rKT-fDNQc-rz84k6haRMs_WfXoU6kI",
+  authDomain: "mail-9c51f.firebaseapp.com",
+  databaseURL: "https://mail-9c51f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mail-9c51f",
+  storageBucket: "mail-9c51f.firebasestorage.app",
+  messagingSenderId: "240185286356",
+  appId: "1:240185286356:web:a9273c909ae18e36b86541",
+  measurementId: "G-0XHQ657PH8"
+};
+
+  
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
+import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const savedMessage = document.getElementById('savedMessage');
+const createdAtEl = document.getElementById('createdAt');
+const autoCopyMsg = document.getElementById('autoCopyMsg');
+const toast = document.getElementById('toast');
+let lastMessage = '';
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.style.display='block';
+  setTimeout(()=>{ toast.style.display='none'; },3000);
+}
+
+function createClickableLink(text){
+  // Nếu là URL, tạo link
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+}
+
+const latestDoc = doc(db,'messages','latest');
+
+onSnapshot(latestDoc, async (snap)=>{
+  if(snap.exists()){
+    const data = snap.data();
+    savedMessage.innerHTML = createClickableLink(data.message || '');
+    if(data.createdAt && data.createdAt.toDate){
+      createdAtEl.textContent = data.createdAt.toDate().toLocaleString();
+    }
+    // Auto-copy
+    try{ await navigator.clipboard.writeText(data.message||''); autoCopyMsg.style.display='block'; }
+    catch(e){ console.warn('Không thể auto copy',e); }
+
+    // Popup toast khi tin nhắn mới
+    if(data.message && data.message !== lastMessage){
+      lastMessage = data.message;
+      showToast('📩 Tin nhắn mới: ' + data.message);
+
+      // Notification nếu được phép
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Tin nhắn mới', { body: data.message });
+      } else if('Notification' in window && Notification.permission !== 'denied'){
+        Notification.requestPermission();
+      }
+    }
+  } else {
+    savedMessage.textContent = 'Chưa có tin nhắn';
+    createdAtEl.textContent = '—';
+  }
+});
+</script>
+</body>
+</html>
