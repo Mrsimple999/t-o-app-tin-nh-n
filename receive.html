@@ -5,12 +5,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Đang chuyển hướng...</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; }
+  </style>
 </head>
 <body>
   <p id="status">Đang tải tin nhắn...</p>
 
   <script type="module">
- const firebaseConfig = { 
+const firebaseConfig = { 
   apiKey : "AIzaSyB9elXt44pt-DGYygIOWQog8XE-YqQO_I8" , 
   authDomain : "email-sync-tool.firebaseapp.com" , 
   databaseURL : "https://email-sync-tool-default-rtdb.asia-southeast1.firebasedatabase.app" , 
@@ -19,7 +22,6 @@
   messagingSenderId : "902586987378" , 
   appId : "1:902586987378:web:b151f5d50773490816e3eb" 
 };
-
 
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
@@ -36,19 +38,30 @@
     }
 
     onSnapshot(latestDoc, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const text = data.message || "";
-        const url = isValidUrl(text);
-
-        if (url) {
-          statusEl.textContent = "Đang chuyển hướng tới " + url.href + "...";
-          window.location.href = url.href; // Tự động redirect
-        } else {
-          statusEl.textContent = "Nội dung không phải đường link: " + text;
-        }
-      } else {
+      if (!snap.exists()) {
         statusEl.textContent = "Chưa có tin nhắn nào.";
+        return;
+      }
+
+      const text = (snap.data().message || "").trim();
+      if (!text) return;
+
+      statusEl.textContent = "Đang mở: " + text;
+
+      // Nếu là http(s) → iOS sẽ dùng Universal Link (nếu có) hoặc mở Safari
+      if (text.startsWith("http")) {
+        window.location.replace(text);
+      }
+      // Nếu là custom scheme (fb://, zalo://, myapp://...)
+      else if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(text)) {
+        try {
+          window.location.replace(text);
+        } catch {
+          statusEl.textContent = "❌ Không mở được ứng dụng: " + text;
+        }
+      }
+      else {
+        statusEl.textContent = "Nội dung không phải đường link: " + text;
       }
     });
   </script>
