@@ -57,7 +57,7 @@ message: text,
 createdAt: serverTimestamp()
 });
 sendResult.style.display = 'block';
-sendResult.textContent = '✔ Tin nhắn đã được gửi. Người nhận mở link receive.html để xem.';
+sendResult.innerHTML = '✔ Tin nhắn đã được gửi. Người nhận mở link <a href="receive.html" target="_blank">receive.html</a> để xem.';
 }catch(err){
 console.error(err);
 alert('Lỗi khi gửi: '+(err.message||err));
