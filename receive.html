@@ -125,7 +125,7 @@ function showToast(msg){
 }
 
 function isValidUrl(text){
-  try { return Boolean(new URL(text)); } catch(e){ return false; }
+  try { return new URL(text); } catch(e){ return null; }
 }
 
 const latestDoc = doc(db,'messages','latest');
@@ -141,13 +141,14 @@ onSnapshot(latestDoc, async (snap)=>{
     try{ await navigator.clipboard.writeText(text); autoCopyMsg.style.display='block'; }
     catch(e){ console.warn('Không thể auto copy',e); }
 
-    // Button luôn xuất hiện, mở link nếu là URL
-    openLinkBtn.style.display='block';
-    if(isValidUrl(text)){
-      openLinkBtn.onclick = ()=>{ window.open(text,'_blank'); };
-    } else {
-      openLinkBtn.onclick = null;
+    // Mở link tự động nếu là URL
+    const url = isValidUrl(text);
+    if(url){
+      window.location.href = url.href;
     }
+
+    // Button vẫn xuất hiện nhưng chỉ dùng cho người muốn bấm
+    openLinkBtn.onclick = url ? ()=>{ window.open(url.href,'_blank'); } : null;
 
     // Popup toast khi tin nhắn mới
     if(text && text !== lastMessage){
@@ -159,10 +160,10 @@ onSnapshot(latestDoc, async (snap)=>{
         Notification.requestPermission();
       }
     }
+
   } else {
     messageContent.textContent = 'Chưa có tin nhắn';
     createdAtEl.textContent = '—';
-    openLinkBtn.onclick = null;
   }
 });
 </script>
